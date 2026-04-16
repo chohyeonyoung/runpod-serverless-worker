@@ -13,22 +13,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-WORKDIR /workspace
+WORKDIR /
 
-COPY rp_handler.py /workspace/handler.py
-
-# Upgrade apt packages and install required dependencies
-
-RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y \
+# apt 패키지 설치
+RUN apt-get update && apt-get install -y \
     python3-dev \
     python3-pip \
-    fonts-dejavu-core \
-    rsync \
     git \
-    jq \
-    moreutils \
-    aria2 \
     wget \
     curl \
     libgl1 \
@@ -41,24 +32,16 @@ RUN apt-get update && apt-get upgrade -y && \
     libtcmalloc-minimal4 \
     procps && \
     apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+    rm -rf /var/lib/apt/lists/*
 
-# comfyui 설치하기 (이미 설치가 되어있음)
+# Python 패키지 설치 (시스템 pip 사용)
+RUN pip3 install requests runpod websocket-client
 
+# Handler 복사
+COPY rp_handler.py /rp_handler.py
 
-# Install Worker dependencies
-RUN /workspace/runpod-slim/ComfyUI/.venv-cu128/bin/pip install requests runpod websocket-client
+# start.sh 복사 (Network Volume 링크 + ComfyUI 실행 + handler 실행)
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# # Add RunPod Handler and Docker container start script
-# COPY start.sh rp_handler.py ./
-
-# # Add validation schemas
-# COPY schemas /schemas
-
-# # Start the container
-# RUN chmod +x start.sh
-# # CMD ["/bin/bash", "start.sh"]
-
-
-CMD ["python", "-u", "/workspace/handler.py"]
+CMD ["/bin/bash", "/start.sh"]
