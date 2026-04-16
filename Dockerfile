@@ -4,7 +4,7 @@
 # /workspace/runpod-slim/ComfyUI/custom_nodes
 # /workspace/runpod-slim/ComfyUI/output
 # /workspace/runpod-slim/ComfyUI/input
-FROM runpod/comfyui:cuda13.0
+FROM runpod/comfyui:1.4.0-cuda13.0
 
 
 ENV DEBIAN_FRONTEND=noninteractive \
