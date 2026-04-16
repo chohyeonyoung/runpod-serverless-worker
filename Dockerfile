@@ -18,32 +18,31 @@ WORKDIR /workspace
 COPY rp_handler.py /workspace/handler.py
 
 # Upgrade apt packages and install required dependencies
-RUN apt update && \
-    apt upgrade -y && \
-    apt install -y \
-      python3-dev \
-      python3-pip \
-      fonts-dejavu-core \
-      rsync \
-      git \
-      jq \
-      moreutils \
-      aria2 \
-      wget \
-      curl \
-      libgl1-mesa-glx \
-      libglib2.0-0 \
-      libsm6 \
-      libgl1 \
-      libxrender1 \
-      libxext6 \
-      ffmpeg \
-      libgoogle-perftools4 \
-      libtcmalloc-minimal4 \
-      procps && \
+
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y \
+    python3-dev \
+    python3-pip \
+    fonts-dejavu-core \
+    rsync \
+    git \
+    jq \
+    moreutils \
+    aria2 \
+    wget \
+    curl \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxrender1 \
+    libxext6 \
+    ffmpeg \
+    libgoogle-perftools4 \
+    libtcmalloc-minimal4 \
+    procps && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
-    apt-get clean -y
+    apt-get clean
 
 # comfyui 설치하기 (이미 설치가 되어있음)
 
