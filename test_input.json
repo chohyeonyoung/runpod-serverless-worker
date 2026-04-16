@@ -1,0 +1,9 @@
+{
+  "input": {
+    "image_url": "/workspace/runpod-slim/ComfyUI/input/pano.png",
+    "customer_id": "cust_001",
+    "simulation_id": "sim_042",
+    "uuid": "abcdefghijklmnop",
+    "image_index": 0
+  }
+}

@@ -1,0 +1,5 @@
+Pillow
+requests
+python-dotenv
+runpod
+websocket-client>=1.6.0
