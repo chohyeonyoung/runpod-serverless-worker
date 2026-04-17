@@ -29,8 +29,9 @@ ls "$VENV_DIR/bin/activate" && echo "venv OK" || { echo "ERROR: no venv"; exit 1
 echo "Activating venv..."
 source "$VENV_DIR/bin/activate"
 
-echo "Python: $(which python3)"
-echo "Python version: $(python3 --version)"
+PYTHON="$VENV_DIR/bin/python3"
+echo "Python: $PYTHON"
+echo "Python version: $($PYTHON --version)"
 
 # runpod, websocket 혹시 없으면 설치
 pip install requests runpod websocket-client -q
