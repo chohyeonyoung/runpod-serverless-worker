@@ -132,8 +132,31 @@ def wait_for_completion(prompt_id, timeout=600):
 
 
 
+
+def wait_for_comfyui(timeout=120):
+    """ComfyUI 서버가 뜰 때까지 대기"""
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            r = requests.get(f"{COMFYUI_URL}/system_stats", timeout=3)
+            if r.status_code == 200:
+                print("[ComfyUI] 서버 준비 완료")
+                return True
+        except:
+            pass
+        print("[ComfyUI] 대기 중...")
+        time.sleep(3)
+    raise RuntimeError("ComfyUI 서버 시작 실패")
+
+
+
+
+
+
+
 # 메인 handler
 def handler(job):
+    wait_for_comfyui()  # ⭐ 핸들러 시작 시 ComfyUI 준비 확인
     """
     RunPod이 job 수신 시 자동으로 이 함수를 호출
     job = {
@@ -147,6 +170,7 @@ def handler(job):
         }
     }
     """
+    
     job_input = job.get("input", {})
 
     # ── 입력값 파싱 ──────────────────
@@ -165,21 +189,27 @@ def handler(job):
 
     try:
         # 1. 디렉토리 생성
+        print("[1] 디렉토리 생성 및 이미지 다운로드 시작")
         input_dir, output_dir, input_image_path, save_image_path = make_job_dirs_and_download(
             image_url, customer_id, simulation_id, uuid, image_index
         )
-
+        print(f"[2] 다운로드 완료: {input_image_path}")
+        
         # 3. workflow 경로 수정
         workflow = get_workflow(input_dir, output_dir, image_index)
-
+        print("[3] workflow 로드 완료")
+        
         # 4. ComfyUI 실행
         result = queue_prompt(workflow)
         prompt_id = result["prompt_id"]
-
+        print(f"[4] ComfyUI 큐 전송 완료. prompt_id: {prompt_id}")
+        
         # 5. 완료 대기
+        print("[5] 완료 대기 시작...")
         if not wait_for_completion(prompt_id):
             return {"error": "Timeout"}
-
+        print("[6] 완료!")
+        
         # 6. 결과 반환
         return {
             "status": "success",
