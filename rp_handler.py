@@ -157,7 +157,7 @@ def handler(job):
             "image_url": "https://...",
             "customer_id": "cust_001",
             "simulation_id": "sim_042",
-            "timestamp": "20250416_143022",  # 공통 폴더명용
+            "uuid": "20250416",  # 공통 폴더명용
             "image_index": 0
         }
     }
@@ -183,8 +183,8 @@ def handler(job):
 
     try:
         # 1. 디렉토리 생성
-        input_dir, output_dir, folder_name = make_job_dirs(
-            customer_id, simulation_id, uuid
+        input_dir, output_dir, input_image_path, save_image_path = make_job_dirs(
+            customer_id, simulation_id, image_index, uuid
         )
 
         # ⭐ URL이면 다운로드, 로컬 경로면 복사
@@ -192,9 +192,9 @@ def handler(job):
             download_image(image_url, input_dir, image_index)
         elif image_path:
             import shutil
-            ext = os.path.splitext(image_path)[1]
-            filename = f"image_{image_index:04d}{ext}"
-            shutil.copy(image_path, os.path.join(input_dir, filename))
+            # ext = os.path.splitext(image_path)[1]
+            # filename = f"image_{image_index:04d}{ext}"
+            shutil.copy(image_path, input_image_path)  # ⭐ input_image_path 사용
         
         # 3. workflow 경로 수정
         workflow = get_workflow(input_dir, output_dir, image_index)
@@ -212,8 +212,10 @@ def handler(job):
             "status": "success",
             "customer_id": customer_id,
             "simulation_id": simulation_id,
+            "uuid": uuid,
+            "image_index": image_index,
             "output_dir": output_dir,
-            "filename": f"result_{image_index}.png"
+            "save_image_path": save_image_path
         }
 
     except Exception as e:
