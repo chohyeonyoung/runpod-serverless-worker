@@ -48,7 +48,7 @@ def make_job_dirs(customer_id, simulation_id, image_index, uuid):
     input_image_path = os.path.join(input_dir, filename)
 
     # 출력 폴더
-    output_dir = f"{VOLUME_MOUNT_PATH}/workspace/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{uuid}" 
+    output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{uuid}" 
     os.makedirs(output_dir, exist_ok=True)
 
     # 출력 파일 경로 (입력과 동일 이름)
@@ -89,7 +89,7 @@ def get_workflow(input_dir, output_dir, image_index):
     input_dir 및 output_dir 경로 현재 job 경로로 교체
     """
 
-    with open(f"{VOLUME_MOUNT_PATH}/workspace/runpod-slim/ComfyUI/user/default/workflows/qwen_model_1229_Fair_blending_websocket_0402_del_segment.json", "r") as f:
+    with open(f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/user/default/workflows/qwen_model_1229_Fair_blending_websocket_0402_del_segment.json", "r") as f:
         workflow = json.load(f)
 
     # 노드 23: 입력 경로 교체
