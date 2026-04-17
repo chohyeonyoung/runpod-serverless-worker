@@ -13,8 +13,8 @@ from requests.adapters import HTTPAdapter, Retry
 import urllib.request  # ComfyUI API 호출
 
 
-BASE_URI = 'http://0.1:3000'
-COMFYUI_URL = 'http://0.1:8188'
+BASE_URI = 'http://127.0.0.1:3000'
+COMFYUI_URL = 'http://127.0.0.1:8188'
 RUNPOD_VOLUME_PATH = '/runpod-volume'
 VOLUME_MOUNT_PATH  = os.environ.get("RUNPOD_VOLUME_PATH", "/runpod-volume")
 NETWORK_VOLUME = '/workspace'
@@ -113,7 +113,7 @@ def wait_for_completion(prompt_id, timeout=600):
     node: null 이 오면 해당 prompt 완료
     """
     ws = websocket.WebSocket()
-    ws.connect(f"ws://0.1:8188/ws?clientId=serverless_worker")
+    ws.connect(f"ws://127.0.0.1:8188/ws?clientId=serverless_worker")
 
     start_time = time.time()
     try:
