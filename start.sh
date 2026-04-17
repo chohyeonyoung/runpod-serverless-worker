@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# ⭐ logs 폴더 생성
+mkdir -p /workspace/logs
+touch /workspace/logs/comfyui.log
+
 echo "Worker Initiated"
 
 # Network Volume의 ComfyUI를 사용
@@ -15,9 +20,6 @@ source "$VENV_DIR/bin/activate"
 
 # runpod, websocket 혹시 없으면 설치
 pip install requests runpod websocket-client -q
-
-# ⭐ logs 폴더 생성
-mkdir -p /runpod-volume/logs
 
 echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
