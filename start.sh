@@ -2,7 +2,7 @@
 echo "Worker Initiated"
 
 # Network Volume의 ComfyUI를 사용
-COMFYUI_DIR="/runpod-volume/workspace/runpod-slim/ComfyUI"
+COMFYUI_DIR="/runpod-volume/runpod-slim/ComfyUI"
 VENV_DIR="$COMFYUI_DIR/.venv-cu128"
 
 echo "Activating venv..."
