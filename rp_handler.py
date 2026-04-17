@@ -156,7 +156,7 @@ def wait_for_comfyui(timeout=120):
 
 # 메인 handler
 def handler(job):
-    wait_for_comfyui()  # ⭐ 핸들러 시작 시 ComfyUI 준비 확인
+
     """
     RunPod이 job 수신 시 자동으로 이 함수를 호출
     job = {
@@ -228,15 +228,9 @@ def handler(job):
 # ── RunPod 시작점 ──────────────────────────
 if __name__ == "__main__":
     # 1. 먼저 ComfyUI가 완전히 뜰 때까지 기다립니다.
-    ready = wait_for_comfyui()
-    
-    if ready:
-        print("[RunPod] ComfyUI 준비 완료. 워커를 시작합니다.")
-        # 2. ComfyUI가 준비된 '후에' RunPod 워커를 실행합니다.
-        runpod.serverless.start({"handler": handler})
-    else:
-        print("[Error] ComfyUI 실행 실패로 인해 워커를 시작할 수 없습니다.")
-        sys.exit(1)
+    wait_for_comfyui()
+    print("[RunPod] ComfyUI 준비 완료. 워커를 시작합니다.")
+    runpod.serverless.start({"handler": handler})
 
 
 
