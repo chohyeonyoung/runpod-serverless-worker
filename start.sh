@@ -37,13 +37,10 @@ pip install requests runpod websocket-client -q
 echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
 
-# foreground에서 10초 실행해서 에러 확인
-timeout 10 python main.py --listen 0.0.0.0 --port 8188 2>&1 | head -50 || true
-
 
 python main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
-
-
+COMFY_PID=$!  # ⭐ 여기 추가
+echo "ComfyUI PID: $COMFY_PID"
 
 # ComfyUI 뜰 때까지 대기 (최대 120초)
 echo "Waiting for ComfyUI..."
