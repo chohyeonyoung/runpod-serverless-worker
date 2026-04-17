@@ -13,8 +13,8 @@ from requests.adapters import HTTPAdapter, Retry
 import urllib.request  # ComfyUI API 호출
 
 
-BASE_URI = 'http://127.0.0.1:3000'
-COMFYUI_URL = 'http://127.0.0.1:8188'
+BASE_URI = 'http://0.1:3000'
+COMFYUI_URL = 'http://0.1:8188'
 RUNPOD_VOLUME_PATH = '/runpod-volume'
 VOLUME_MOUNT_PATH  = os.environ.get("RUNPOD_VOLUME_PATH", "/runpod-volume")
 NETWORK_VOLUME = '/workspace'
@@ -113,7 +113,7 @@ def wait_for_completion(prompt_id, timeout=600):
     node: null 이 오면 해당 prompt 완료
     """
     ws = websocket.WebSocket()
-    ws.connect(f"ws://127.0.0.1:8188/ws?clientId=serverless_worker")
+    ws.connect(f"ws://0.1:8188/ws?clientId=serverless_worker")
 
     start_time = time.time()
     try:
@@ -227,8 +227,16 @@ def handler(job):
 
 # ── RunPod 시작점 ──────────────────────────
 if __name__ == "__main__":
-    runpod.serverless.start({"handler": handler})
-
+    # 1. 먼저 ComfyUI가 완전히 뜰 때까지 기다립니다.
+    ready = wait_for_comfyui()
+    
+    if ready:
+        print("[RunPod] ComfyUI 준비 완료. 워커를 시작합니다.")
+        # 2. ComfyUI가 준비된 '후에' RunPod 워커를 실행합니다.
+        runpod.serverless.start({"handler": handler})
+    else:
+        print("[Error] ComfyUI 실행 실패로 인해 워커를 시작할 수 없습니다.")
+        sys.exit(1)+
 
 
 
@@ -238,13 +246,13 @@ if __name__ == "__main__":
 #     subprocess.Popen([
 #     "python3",
 #     "/workspace/runpod-slim/ComfyUI/main.py",
-#     "--listen", "127.0.0.1",
+#     "--listen", "0.1",
 #     "--port", "8188"
 # ])
 #     # 서버 ready 체크
 #     for _ in range(60):
 #         try:
-#             requests.get("http://127.0.0.1:8188")
+#             requests.get("http://0.1:8188")
 #             print("ComfyUI ready")
 #             return
 #         except:
@@ -253,7 +261,7 @@ if __name__ == "__main__":
 
 # # 완료 될때까지 대기 함수
 # def wait_for_completion(prompt_id):
-#     history_url = f"http://127.0.0.1:8188/history/{prompt_id}"
+#     history_url = f"http://0.1:8188/history/{prompt_id}"
 
 #     while True:
 #         res = requests.get(history_url)
