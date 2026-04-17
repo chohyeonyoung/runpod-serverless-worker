@@ -11,16 +11,38 @@ source "$VENV_DIR/bin/activate"
 # runpod, websocket 혹시 없으면 설치
 pip install requests runpod websocket-client -q
 
+# ⭐ logs 폴더 생성
+mkdir -p /runpod-volume/logs
+
 echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
 python main.py --listen 0.0.0.0 --port 3000 > /workspace/logs/comfyui.log 2>&1 &
 
-# ComfyUI 뜰 때까지 대기
+
+# ComfyUI 뜰 때까지 대기 (최대 120초)
 echo "Waiting for ComfyUI..."
+TIMEOUT=120
+ELAPSED=0
 while ! curl -s http://127.0.0.1:3000/system_stats > /dev/null 2>&1; do
     sleep 2
+    ELAPSED=$((ELAPSED + 2))
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "ERROR: ComfyUI failed to start within ${TIMEOUT}s"
+        echo "=== ComfyUI logs ==="
+        cat /runpod-volume/logs/comfyui.log
+        exit 1
+    fi
 done
 echo "ComfyUI ready!"
+
+
+
+# ComfyUI 뜰 때까지 대기
+# echo "Waiting for ComfyUI..."
+# while ! curl -s http://127.0.0.1:3000/system_stats > /dev/null 2>&1; do
+#     sleep 2
+# done
+# echo "ComfyUI ready!"
 
 # Handler 실행
 echo "Starting RunPod Handler..."
