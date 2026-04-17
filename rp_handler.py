@@ -174,9 +174,12 @@ def handler(job):
     uuid = job_input.get("uuid")
     image_index   = job_input.get("image_index", 0)
 
+    # ⭐ image_url 또는 image_path 둘 중 하나만 있으면 됨
+    if not any([image_url, image_path]):
+        return {"error": "image_url 또는 image_path 필요"}
 
-    if not all([image_url, customer_id, simulation_id, uuid]):
-        return {"error": "필수 입력값 누락"}
+    if not all([customer_id, simulation_id, uuid]):
+        return {"error": "customer_id, simulation_id, uuid 필요"}
 
     try:
         # 1. 디렉토리 생성
@@ -184,9 +187,15 @@ def handler(job):
             customer_id, simulation_id, uuid
         )
 
-        # 2. 이미지 다운로드
-        download_image(image_url, input_dir, image_index)
-
+        # ⭐ URL이면 다운로드, 로컬 경로면 복사
+        if image_url:
+            download_image(image_url, input_dir, image_index)
+        elif image_path:
+            import shutil
+            ext = os.path.splitext(image_path)[1]
+            filename = f"image_{image_index:04d}{ext}"
+            shutil.copy(image_path, os.path.join(input_dir, filename))
+        
         # 3. workflow 경로 수정
         workflow = get_workflow(input_dir, output_dir, image_index)
 
