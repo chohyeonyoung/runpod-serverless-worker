@@ -69,7 +69,7 @@ def get_workflow(input_dir, output_dir, image_index):
     qwen_model_1229_Fair_blending_websocket_0402_del_segment.json
     input_dir 및 output_dir 경로 현재 job 경로로 교체
     """
-    workflow_path = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/user/default/workflows/qwen_model_1229_Fair_blending_websocket_0402_del_segment.json"
+    workflow_path = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/user/default/workflows/api_qwen_model_1229_Fair_blending_websocket_0402_del_segment.json"
     
     if not os.path.exists(workflow_path):
         raise FileNotFoundError(f"workflow 파일 없음: {workflow_path}")
