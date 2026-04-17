@@ -28,8 +28,9 @@ ls "$VENV_DIR/bin/activate" && echo "venv OK" || { echo "ERROR: no venv"; exit 1
 
 echo "Activating venv..."
 source "$VENV_DIR/bin/activate"
-echo "Python: $(which python)"
-echo "Python version: $(python --version)"
+
+echo "Python: $(which python3)"
+echo "Python version: $(python3 --version)"
 
 # runpod, websocket 혹시 없으면 설치
 pip install requests runpod websocket-client -q
@@ -38,7 +39,7 @@ echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
 
 
-python main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
+python3 main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
 COMFY_PID=$!  # ⭐ 여기 추가
 echo "ComfyUI PID: $COMFY_PID"
 
@@ -46,7 +47,7 @@ echo "ComfyUI PID: $COMFY_PID"
 echo "Waiting for ComfyUI..."
 TIMEOUT=180
 ELAPSED=0
-while ! curl -s http://127.0.0.1:3000/system_stats > /dev/null 2>&1; do
+while ! curl -s http://127.0.0.1:8188/system_stats > /dev/null 2>&1; do
     sleep 3
     ELAPSED=$((ELAPSED + 3))
     echo "Elapsed: ${ELAPSED}s / ${TIMEOUT}s"
@@ -55,14 +56,14 @@ while ! curl -s http://127.0.0.1:3000/system_stats > /dev/null 2>&1; do
     if ! kill -0 $COMFY_PID 2>/dev/null; then
         echo "ERROR: ComfyUI process died!"
         echo "=== ComfyUI logs ==="
-        cat /runpod-volume/logs/comfyui.log
+        cat /workspace/logs/comfyui.log
         exit 1
     fi
     
     if [ $ELAPSED -ge $TIMEOUT ]; then
         echo "ERROR: Timeout!"
         echo "=== ComfyUI logs ==="
-        cat /runpod-volume/logs/comfyui.log
+        cat /workspace/logs/comfyui.log
         exit 1
     fi
 done
