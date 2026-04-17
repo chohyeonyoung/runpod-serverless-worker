@@ -3,12 +3,26 @@
 # ⭐ logs 폴더 생성
 mkdir -p /workspace/logs
 touch /workspace/logs/comfyui.log
-
 echo "Worker Initiated"
 
 # Network Volume의 ComfyUI를 사용
 COMFYUI_DIR="/runpod-volume/runpod-slim/ComfyUI"
 VENV_DIR="$COMFYUI_DIR/.venv-cu128"
+
+# ⭐ Network Volume 마운트 대기 추가
+echo "Waiting for Network Volume..."
+ELAPSED=0
+TIMEOUT=60
+until [ -d "$COMFYUI_DIR" ]; do
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+    echo "Volume not ready... ${ELAPSED}s / ${TIMEOUT}s"
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        echo "ERROR: Network Volume mount timeout"
+        exit 1
+    fi
+done
+echo "Network Volume ready ✓"
 
 # 경로 확인
 echo "=== Path Check ==="
