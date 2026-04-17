@@ -40,7 +40,7 @@ echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
 
 
-python3 main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
+$PYTHON main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
 COMFY_PID=$!  # ⭐ 여기 추가
 echo "ComfyUI PID: $COMFY_PID"
 
@@ -82,4 +82,4 @@ echo "ComfyUI ready!"
 
 # Handler 실행
 echo "Starting RunPod Handler..."
-python -u /rp_handler.py
+$PYTHON -u /rp_handler.py
