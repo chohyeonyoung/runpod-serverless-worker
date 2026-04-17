@@ -30,56 +30,37 @@ print("start worker")
 #                               ComfyUI Functions                              #
 # ---------------------------------------------------------------------------- #
 
-# 이미지 넣을 폴더 생성 함수
-def make_job_dirs(customer_id, simulation_id, image_index, uuid):
-    """
-    입력받은 이미지는 각 worker 로컬로
-    출력할 이미지는  공유 볼륨으로 (모든 gpu가 접근 가능)
-    """
+# 이미지 넣을 폴더 생성
 
-    input_folder_name = f"{customer_id}/{simulation_id}/{uuid}/{image_index}"
-
-    # 입력은 로컬 tmp (worker마다 독립적)
-    input_dir = f"/tmp/input/{input_folder_name}"
+def make_job_dirs_and_download(image_url, customer_id, simulation_id, uuid, image_index):
+    """
+    1. /tmp/input/{customer_id}/{simulation_id}/{uuid}/{image_index}/ 폴더 생성
+    2. image_url 다운로드 → {image_index}.png 로 저장 (확장자 무관하게 png로 통일)
+    3. output 폴더 생성
+    """
+    # 입력 폴더 (로컬 tmp, 휘발성)
+    input_dir = f"/tmp/input/{customer_id}/{simulation_id}/{uuid}/{image_index}"
     os.makedirs(input_dir, exist_ok=True)
-    
-    # 입력 파일명
-    filename = f"{image_index}.png"
-    input_image_path = os.path.join(input_dir, filename)
 
-    # 출력 폴더
-    output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{uuid}" 
+    # 이미지 다운로드
+    response = requests.get(image_url, timeout=30) # image_url에 HTTP GET 요청, 30초 안에 응답없으면 에러
+    response.raise_for_status() # HTTP 상태코드 확인 200(정상), 404, 500 (에러)
+
+    # 파일명은 항상 {image_index}.png
+    filename = f"{image_index}.png"
+    input_image_path = os.path.join(input_dir, filename) # input_image 경로
+
+    with open(input_image_path, "wb") as f:
+        f.write(response.content)
+
+    # 출력 폴더 (Network Volume, 영구)
+    output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{uuid}"
     os.makedirs(output_dir, exist_ok=True)
 
-    # 출력 파일 경로 (입력과 동일 이름)
     save_image_path = os.path.join(output_dir, filename)
 
     return input_dir, output_dir, input_image_path, save_image_path
 
-
-
-
-# 이미지url 다운받기, 이미지 포함된 고객id, 시뮬레이션id받기
-"""
-URL-> input_dir/pano_0.png로 저장
-ComfyUI 노드 23(Load Image Batch)이 이 경로를 읽음
-"""
-
-def download_image(image_url, input_dir, image_index):
-    ext = image_url.split(".")[-1].split("?")[0] # 확장자 
-    if ext.lower() not in ["jpg", "jpeg", "png", "webp"]:
-        ext = "png"
-
-    filename = f"pano_{image_index:04d}.{ext}"
-    save_path = os.path.join(input_dir, filename)
-
-    response = requests.get(image_url, timeout=30) # image_url에 HTTP GET 요청, 30초 안에 응답업으면 에러
-    response.raise_for_status() # HTTP 상태코드 확인 200(정상) or 404,500(에러)
-    
-    with open(save_path, "wb") as f:
-        f.write(response.content)
-
-    return save_path
 
 
 #  workflow 수정
@@ -170,36 +151,24 @@ def handler(job):
 
     # ── 입력값 파싱 ──────────────────
     image_url     = job_input.get("image_url")
-    image_path  = job_input.get("image_path")   # Network Volume 경로
-
-
     customer_id   = job_input.get("customer_id")
     simulation_id = job_input.get("simulation_id")
     uuid = job_input.get("uuid")
     image_index   = job_input.get("image_index", 0)
 
-    # ⭐ image_url 또는 image_path 둘 중 하나만 있으면 됨
-    if not any([image_url, image_path]):
-        return {"error": "image_url 또는 image_path 필요"}
+    # ⭐ image_url은 꼭 있어야 됨
+    if not image_url:
+        return {"error": "image_url 필요"}
 
     if not all([customer_id, simulation_id, uuid]):
         return {"error": "customer_id, simulation_id, uuid 필요"}
 
     try:
         # 1. 디렉토리 생성
-        input_dir, output_dir, input_image_path, save_image_path = make_job_dirs(
-            customer_id, simulation_id, image_index, uuid
+        input_dir, output_dir, input_image_path, save_image_path = make_job_dirs_and_download(
+            image_url, customer_id, simulation_id, uuid, image_index
         )
 
-        # ⭐ URL이면 다운로드, 로컬 경로면 복사
-        if image_url:
-            download_image(image_url, input_dir, image_index)
-        elif image_path:
-            import shutil
-            # ext = os.path.splitext(image_path)[1]
-            # filename = f"image_{image_index:04d}{ext}"
-            shutil.copy(image_path, input_image_path)  # ⭐ input_image_path 사용
-        
         # 3. workflow 경로 수정
         workflow = get_workflow(input_dir, output_dir, image_index)
 
