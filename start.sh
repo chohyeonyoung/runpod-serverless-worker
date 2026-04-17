@@ -5,6 +5,11 @@ echo "Worker Initiated"
 COMFYUI_DIR="/runpod-volume/runpod-slim/ComfyUI"
 VENV_DIR="$COMFYUI_DIR/.venv-cu128"
 
+# 경로 존재 확인
+echo "Checking paths..."
+ls /runpod-volume/ || echo "WARNING: /runpod-volume is empty or not mounted"
+ls "$COMFYUI_DIR" || { echo "ERROR: ComfyUI dir not found: $COMFYUI_DIR"; exit 1; }
+
 echo "Activating venv..."
 source "$VENV_DIR/bin/activate"
 
