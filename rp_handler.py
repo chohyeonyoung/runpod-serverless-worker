@@ -236,7 +236,7 @@ if __name__ == "__main__":
         runpod.serverless.start({"handler": handler})
     else:
         print("[Error] ComfyUI 실행 실패로 인해 워커를 시작할 수 없습니다.")
-        sys.exit(1)+
+        sys.exit(1)
 
 
 
