@@ -48,7 +48,8 @@ echo "Python: $PYTHON"
 echo "Python version: $($PYTHON --version)"
 
 # runpod, websocket 혹시 없으면 설치
-pip install requests runpod websocket-client -q
+# pip install requests runpod websocket-client -q
+"$PYTHON" -m pip install requests runpod websocket-client -q
 
 echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
@@ -96,4 +97,5 @@ echo "ComfyUI ready!"
 
 # Handler 실행
 echo "Starting RunPod Handler..."
-$PYTHON -u /rp_handler.py
+# $PYTHON -u /rp_handler.py
+$PYTHON -u /rp_handler.py 2>&1
