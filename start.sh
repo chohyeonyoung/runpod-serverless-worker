@@ -106,6 +106,9 @@ curl -v http://127.0.0.1:8188/system_stats 2>&1 | head -20
 echo "Starting RunPod Handler..."
 # $PYTHON -u /rp_handler.py
 
+# ComfyUI 로그도 실시간 출력
+tail -f /workspace/logs/comfyui.log &
+
 export RUNPOD_DISABLE_CUDA_CHECK=1
 
 echo "=== Python 패키지 확인 ==="
