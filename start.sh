@@ -42,10 +42,12 @@ ls "$VENV_DIR/bin/activate" && echo "venv OK" || { echo "ERROR: no venv"; exit 1
 
 echo "Activating venv..."
 source "$VENV_DIR/bin/activate"
-
 PYTHON="$VENV_DIR/bin/python3"
 echo "Python: $PYTHON"
 echo "Python version: $($PYTHON --version)"
+
+"$PYTHON" -m pip install requests runpod websocket-client -q
+
 
 # runpod, websocket 혹시 없으면 설치
 # pip install requests runpod websocket-client -q
@@ -98,4 +100,6 @@ echo "ComfyUI ready!"
 # Handler 실행
 echo "Starting RunPod Handler..."
 # $PYTHON -u /rp_handler.py
+
+export RUNPOD_DISABLE_CUDA_CHECK=1
 $PYTHON -u /rp_handler.py 2>&1
