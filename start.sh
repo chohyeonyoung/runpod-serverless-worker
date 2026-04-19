@@ -49,7 +49,7 @@ echo "Python version: $($PYTHON --version)"
 
 # runpod, websocket 혹시 없으면 설치
 # pip install requests runpod websocket-client -q
-"$PYTHON" -m pip install requests runpod websocket-client -q
+# "$PYTHON" -m pip install requests runpod websocket-client -q
 
 echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
