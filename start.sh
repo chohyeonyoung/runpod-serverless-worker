@@ -102,4 +102,11 @@ echo "Starting RunPod Handler..."
 # $PYTHON -u /rp_handler.py
 
 export RUNPOD_DISABLE_CUDA_CHECK=1
-$PYTHON -u /rp_handler.py 2>&1
+
+echo "=== Python 패키지 확인 ==="
+"$PYTHON" -c "import runpod; print('runpod OK')" 2>&1
+"$PYTHON" -c "import websocket; print('websocket OK')" 2>&1
+"$PYTHON" -c "import requests; print('requests OK')" 2>&1
+
+echo "=== Handler 시작 ==="
+"$PYTHON" -u /rp_handler.py 2>&1
