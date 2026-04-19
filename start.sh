@@ -87,7 +87,8 @@ while ! curl -s http://127.0.0.1:8188/system_stats > /dev/null 2>&1; do
 done
 
 echo "ComfyUI ready!"
-
+echo "=== ComfyUI 연결 테스트 ==="
+curl -v http://127.0.0.1:8188/system_stats 2>&1 | head -20
 
 
 # ComfyUI 뜰 때까지 대기
