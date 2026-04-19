@@ -35,7 +35,8 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 # Python 패키지 설치 (시스템 pip 사용)
-RUN pip3 install requests runpod websocket-client
+RUN /runpod-volume/runpod-slim/ComfyUI/.venv-cu128/bin/pip install \
+    requests runpod websocket-client
 
 # Handler 복사
 COPY rp_handler.py /rp_handler.py
