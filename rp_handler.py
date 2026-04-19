@@ -134,12 +134,11 @@ def wait_for_completion(prompt_id, timeout=600):
 
 
 def wait_for_comfyui(timeout=120):
-    """ComfyUI 서버가 뜰 때까지 대기"""
     start = time.time()
     while time.time() - start < timeout:
         try:
             r = requests.get(f"{COMFYUI_URL}/system_stats", timeout=3)
-            if r.status_code == 200:
+            if r.status_code == 200:  # 이미 200 체크하고 있으니 OK
                 print("[ComfyUI] 서버 준비 완료")
                 return True
         except:
@@ -147,7 +146,6 @@ def wait_for_comfyui(timeout=120):
         print("[ComfyUI] 대기 중...")
         time.sleep(3)
     raise RuntimeError("ComfyUI 서버 시작 실패")
-
 
 
 
