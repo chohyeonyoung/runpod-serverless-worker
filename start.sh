@@ -65,7 +65,12 @@ echo "ComfyUI PID: $COMFY_PID"
 echo "Waiting for ComfyUI..."
 TIMEOUT=180
 ELAPSED=0
-while ! curl -s http://127.0.0.1:8188/system_stats > /dev/null 2>&1; do
+# 기존
+# while ! curl -s http://127.0.0.1:8188/system_stats > /dev/null 2>&1; do
+
+# 변경
+while [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8188/system_stats)" != "200" ]; do
+
     sleep 3
     ELAPSED=$((ELAPSED + 3))
     echo "Elapsed: ${ELAPSED}s / ${TIMEOUT}s"
