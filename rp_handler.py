@@ -108,20 +108,52 @@ def queue_prompt(workflow):
 
 
 
+
+
+
 def wait_for_completion(prompt_id, ws, timeout=600):
     start_time = time.time()
     try:
         while time.time() - start_time < timeout:
-            msg = ws.recv()
-            if isinstance(msg, str):
+            ws.settimeout(5)  # recv 블로킹 방지
+            try:
+                msg = ws.recv()
+            except websocket.WebSocketTimeoutException:
+                continue  # timeout이면 다시 루프
+
+            if not isinstance(msg, str):
+                continue  # 바이너리 메시지 무시
+
+            try:
                 data = json.loads(msg)
-                if data.get("type") == "executing":
-                    node = data["data"].get("node")
-                    if node is None and data["data"].get("prompt_id") == prompt_id:
-                        return True
+            except json.JSONDecodeError:
+                continue
+
+            msg_type = data.get("type")
+            msg_data = data.get("data", {})
+
+            print(f"[WS] type={msg_type}, data={msg_data}")  # 디버그용
+
+            if msg_type == "executing":
+                node = msg_data.get("node")
+                pid  = msg_data.get("prompt_id")
+                print(f"[WS] executing node={node}, prompt_id={pid}")
+                if node is None and pid == prompt_id:
+                    print("[WS] 완료 감지!")
+                    return True
+
+    except Exception as e:
+        print(f"[WS] 예외 발생: {e}")
+        traceback.print_exc()
     finally:
         ws.close()
+
+    print("[WS] Timeout 또는 루프 종료")
     return False
+
+
+
+
 
 
 
@@ -191,7 +223,11 @@ def handler(job):
         # ✅ WebSocket 먼저 연결
         ws = websocket.WebSocket()
         ws.connect("ws://127.0.0.1:8188/ws?clientId=serverless_worker")
-    
+        print("[WS] WebSocket 연결 완료")
+
+        
+        # 연결 안정화 대기 (짧게)
+        time.sleep(0.3)
         
         # 4. ComfyUI 실행
         result = queue_prompt(workflow)
