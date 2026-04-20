@@ -110,19 +110,26 @@ def queue_prompt(workflow):
 
 
 
-
 def wait_for_completion(prompt_id, ws, timeout=600):
     start_time = time.time()
     try:
         while time.time() - start_time < timeout:
-            ws.settimeout(5)  # recv 블로킹 방지
+            ws.settimeout(5)
             try:
                 msg = ws.recv()
             except websocket.WebSocketTimeoutException:
-                continue  # timeout이면 다시 루프
+                # ✅ timeout마다 history API로 완료 여부 이중 체크
+                try:
+                    r = requests.get(f"{COMFYUI_URL}/history/{prompt_id}", timeout=3)
+                    if r.status_code == 200 and prompt_id in r.json():
+                        print("[WS] history API로 완료 확인!")
+                        return True
+                except:
+                    pass
+                continue
 
             if not isinstance(msg, str):
-                continue  # 바이너리 메시지 무시
+                continue
 
             try:
                 data = json.loads(msg)
@@ -131,16 +138,27 @@ def wait_for_completion(prompt_id, ws, timeout=600):
 
             msg_type = data.get("type")
             msg_data = data.get("data", {})
+            print(f"[WS] type={msg_type}, data={msg_data}")
 
-            print(f"[WS] type={msg_type}, data={msg_data}")  # 디버그용
-
+            # ✅ 기존 방식
             if msg_type == "executing":
                 node = msg_data.get("node")
                 pid  = msg_data.get("prompt_id")
-                print(f"[WS] executing node={node}, prompt_id={pid}")
                 if node is None and pid == prompt_id:
                     print("[WS] 완료 감지!")
                     return True
+
+            # ✅ 추가: queue_remaining=0 이면 history API로 최종 확인
+            if msg_type == "status":
+                queue_remaining = msg_data.get("status", {}).get("exec_info", {}).get("queue_remaining", -1)
+                if queue_remaining == 0:
+                    try:
+                        r = requests.get(f"{COMFYUI_URL}/history/{prompt_id}", timeout=3)
+                        if r.status_code == 200 and prompt_id in r.json():
+                            print("[WS] queue_remaining=0 + history 확인 → 완료!")
+                            return True
+                    except:
+                        pass
 
     except Exception as e:
         print(f"[WS] 예외 발생: {e}")
