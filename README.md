@@ -14,6 +14,9 @@ Network Volume.
 1. [Local Testing](docs/testing/local.md)
 2. [RunPod Testing](docs/testing/runpod.md)
 
+base_64로 전달
+
+
 ## Installing, Building and Deploying the Serverless Worker
 
 1. [Install ComfyUI on your Network Volume](
