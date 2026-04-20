@@ -55,8 +55,15 @@ echo "Python version: $($PYTHON --version)"
 echo "Starting ComfyUI..."
 cd "$COMFYUI_DIR"
 
+# highvram 사용하기
+# $PYTHON main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
 
-$PYTHON main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
+# 변경
+$PYTHON main.py --listen 0.0.0.0 --port 8188 --highvram > /workspace/logs/comfyui.log 2>&1 &
+
+
+
+
 COMFY_PID=$!  # ⭐ 여기 추가
 echo "ComfyUI PID: $COMFY_PID"
 
