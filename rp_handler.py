@@ -269,14 +269,10 @@ def handler(job):
         # ws.close()
         # print("[6] 완료!")
 
-        with open(save_image_path, "rb") as f:
-            image_base64 = base64.b64encode(f.read()).decode("utf-8")
-
         
         # 6. 결과 반환
         return {
             "status": "success",
-            "image_base64": image_base64,  # ← Unity가 이걸 받아서 디코딩
             "customer_id": customer_id,
             "simulation_id": simulation_id,
             "uuid": uuid,
