@@ -279,9 +279,9 @@ def handler(job):
             "uuid": uuid,
             "image_index": image_index,
             "output_dir": output_dir,
-            "save_image_path": save_image_path
+            "save_image_path": save_image_path,
             "image_base64": image_base64,     # base64 인코딩된 PNG 데이터
-            "image_media_type": "image/png",  # 미디어 타입
+            "image_media_type": "image/png"  # 미디어 타입
         }
 
     except Exception as e:
