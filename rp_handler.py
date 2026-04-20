@@ -112,6 +112,7 @@ def wait_for_completion(prompt_id, timeout=600):
     WebSocket으로 ComfyUI 실행 완료 감지
     node: null 이 오면 해당 prompt 완료
     """
+    start_time = time.time()
     ws = websocket.WebSocket()
     ws.connect(f"ws://127.0.0.1:8188/ws?clientId=serverless_worker")
 
@@ -128,7 +129,6 @@ def wait_for_completion(prompt_id, timeout=600):
     finally:
         ws.close()
     return False
-
 
 
 
@@ -154,7 +154,6 @@ def wait_for_comfyui(timeout=120):
 
 # 메인 handler
 def handler(job):
-
     """
     RunPod이 job 수신 시 자동으로 이 함수를 호출
     job = {
@@ -168,7 +167,6 @@ def handler(job):
         }
     }
     """
-    
     job_input = job.get("input", {})
 
     # ── 입력값 파싱 ──────────────────
@@ -196,17 +194,35 @@ def handler(job):
         # 3. workflow 경로 수정
         workflow = get_workflow(input_dir, output_dir, image_index)
         print("[3] workflow 로드 완료")
+
+
+        # ✅ WebSocket 먼저 연결
+        ws = websocket.WebSocket()
+        ws.connect("ws://127.0.0.1:8188/ws?clientId=serverless_worker")
+    
         
         # 4. ComfyUI 실행
         result = queue_prompt(workflow)
         prompt_id = result["prompt_id"]
         print(f"[4] ComfyUI 큐 전송 완료. prompt_id: {prompt_id}")
+
+
         
-        # 5. 완료 대기
         print("[5] 완료 대기 시작...")
-        if not wait_for_completion(prompt_id):
+        if not wait_for_completion(prompt_id, ws):  # ✅ ws 전달
             return {"error": "Timeout"}
         print("[6] 완료!")
+
+
+        
+        # # 5. 완료 대기
+        # print("[5] 완료 대기 시작...")
+        # if not wait_for_completion(prompt_id):
+        #     return {"error": "Timeout"}
+
+        # ws.close()
+        # print("[6] 완료!")
+
         
         # 6. 결과 반환
         return {
