@@ -48,6 +48,7 @@ def make_job_dirs_and_download(image_url, customer_id, simulation_id, uuid, imag
 
     # 파일명은 항상 {image_index}.png
     filename = f"{image_index}.png"
+    filename_0001 = f"{image_index}_0001.png"
     input_image_path = os.path.join(input_dir, filename) # input_image 경로
 
     with open(input_image_path, "wb") as f:
@@ -57,7 +58,7 @@ def make_job_dirs_and_download(image_url, customer_id, simulation_id, uuid, imag
     output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{uuid}"
     os.makedirs(output_dir, exist_ok=True)
 
-    save_image_path = os.path.join(output_dir, filename)
+    save_image_path = os.path.join(output_dir, filename_0001)
 
     return input_dir, output_dir, input_image_path, save_image_path
 
@@ -269,7 +270,7 @@ def handler(job):
         # ws.close()
         # print("[6] 완료!")
 
-        
+        이미
         # 6. 결과 반환
         return {
             "status": "success",
@@ -279,6 +280,8 @@ def handler(job):
             "image_index": image_index,
             "output_dir": output_dir,
             "save_image_path": save_image_path
+            "image_base64": image_base64,     # base64 인코딩된 PNG 데이터
+            "image_media_type": "image/png",  # 미디어 타입
         }
 
     except Exception as e:
