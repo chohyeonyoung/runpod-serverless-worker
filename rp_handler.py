@@ -107,15 +107,8 @@ def queue_prompt(workflow):
         return json.loads(response.read())
 
 
-def wait_for_completion(prompt_id, timeout=600):
-    """
-    WebSocket으로 ComfyUI 실행 완료 감지
-    node: null 이 오면 해당 prompt 완료
-    """
-    start_time = time.time()
-    ws = websocket.WebSocket()
-    ws.connect(f"ws://127.0.0.1:8188/ws?clientId=serverless_worker")
 
+def wait_for_completion(prompt_id, ws, timeout=600):
     start_time = time.time()
     try:
         while time.time() - start_time < timeout:
@@ -129,7 +122,6 @@ def wait_for_completion(prompt_id, timeout=600):
     finally:
         ws.close()
     return False
-
 
 
 
