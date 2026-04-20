@@ -1,6 +1,6 @@
 # ComfyUI | Stable Diffusion | RunPod Serverless Worker
 
-highvram추가ddd
+highvram추가
 
 This is the source code for a [RunPod](https://runpod.io?ref=2xxro4sy)
 Serverless worker that uses the [ComfyUI API](
