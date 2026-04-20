@@ -1,6 +1,6 @@
 # ComfyUI | Stable Diffusion | RunPod Serverless Worker
-# 커~~밋하고싶다 ~ 쩌신기하다
-# 2번쨉니당, 3번쨰..., 4번째 5번째 6번쨰 7번쨰,,8번쨰,, 9번째,,10번쨰 느낌이 좋다
+# 커~~밋하고싶다 ~
+# 2번쨉
 This is the source code for a [RunPod](https://runpod.io?ref=2xxro4sy)
 Serverless worker that uses the [ComfyUI API](
 https://github.com/comfyanonymous/ComfyUI) for inference.
