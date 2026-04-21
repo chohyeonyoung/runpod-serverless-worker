@@ -1,5 +1,5 @@
 # ComfyUI | Stable Diffusion | RunPod Serverless Worker
-
+gmagmagma
 highvram추가
 
 This is the source code for a [RunPod](https://runpod.io?ref=2xxro4sy)
