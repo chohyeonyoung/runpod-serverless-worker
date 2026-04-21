@@ -10,29 +10,107 @@ import uuid
 import websocket # comfyui  완료 감지
 import requests
 from requests.adapters import HTTPAdapter, Retry
-
 # ComfyUI API 호출
 import urllib.request  
 
+from datetime import datetime
+import pymysql
 
-BASE_URI = 'http://127.0.0.1:3000'
+
+
 COMFYUI_URL = 'http://127.0.0.1:8188'
 RUNPOD_VOLUME_PATH = '/runpod-volume'
 VOLUME_MOUNT_PATH  = os.environ.get("RUNPOD_VOLUME_PATH", "/runpod-volume")
 NETWORK_VOLUME = '/workspace'
 TIMEOUT = 600
-
+# ------------------------------DB 연결 정보----------------------------------- #
+DB_HOST     = os.environ.get("DB_HOST")
+DB_PORT     = int(os.environ.get("DB_PORT", 3306))
+DB_USER     = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
+DB_NAME     = os.environ.get("DB_NAME")
+# ----------------------------------------------------------------------------- #
 session = requests.Session()
 retries = Retry(total=10, backoff_factor=0.1, status_forcelist=[502, 503, 504])
 session.mount('http://', HTTPAdapter(max_retries=retries))
 print("start worker")
 
 
+
+# ---------------------------------------------------------------------------- #
+#                               DB Functions                                   #
+# ---------------------------------------------------------------------------- #
+
+def get_db_connection():
+    return pymysql.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+
+def db_insert(customer_id, simulation_id):
+    """
+    job 시작 시 INSERT
+    image_statement = 0 (진행중)
+    image_url = NULL (아직 없음)
+    create_at / update_at = DB DEFAULT (CURRENT_TIMESTAMP)
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                INSERT INTO comfyui_renderimage_statement
+                    (customer_id, simulation_id, image_statement)
+                VALUES
+                    (%s, %s, 0)
+            """
+            cursor.execute(sql, (customer_id, simulation_id))
+            conn.commit()
+            image_id = cursor.lastrowid
+            print(f"[DB] INSERT 완료 - image_id: {image_id}")
+            return image_id
+    except Exception as e:
+        print(f"[DB] INSERT 실패: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+def db_update(image_id, image_statement, image_url=None):
+    """
+    완료(2) 또는 에러(3) 시 UPDATE
+    update_at은 DB의 ON UPDATE CURRENT_TIMESTAMP가 자동 처리
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                UPDATE comfyui_renderimage_statement
+                SET image_statement = %s,
+                    image_url = %s
+                WHERE image_id = %s
+            """
+            cursor.execute(sql, (image_statement, image_url, image_id))
+            conn.commit()
+            print(f"[DB] UPDATE 완료 - image_id: {image_id}, statement: {image_statement}")
+    except Exception as e:
+        print(f"[DB] UPDATE 실패: {e}")
+        raise
+    finally:
+        conn.close()
+
+
+
+
+
 # ---------------------------------------------------------------------------- #
 #                               ComfyUI Functions                              #
 # ---------------------------------------------------------------------------- #
-
-# 이미지 넣을 폴더 생성
 
 def save_input_image(image_base64, customer_id, simulation_id, file_uuid):
     """
@@ -234,6 +312,14 @@ def handler(job):
     print(f"[0] 생성된 uuid: {file_uuid}")
 
 
+    # ── DB INSERT (job 시작) ──────────────────
+    image_id = None
+    try:
+        image_id = db_insert(customer_id, simulation_id)
+    except Exception as e:
+        print(f"[DB] INSERT 실패, 계속 진행: {e}")
+
+    
     try:
         print("[1] 입력 이미지 저장 시작")
         input_dir, output_dir, input_image_path, save_image_path = save_input_image(
@@ -269,6 +355,10 @@ def handler(job):
         # ✅ base64 반환 완료!
         result_base64 = load_image_as_base64(save_image_path)
         print("[7] base64 변환 완료")    
+
+        # ── DB UPDATE (완료) ──────────────────
+        if image_id:
+            db_update(image_id, image_statement=2, image_url=save_image_path)
                 
 
         # 6. 결과 반환
@@ -277,13 +367,21 @@ def handler(job):
             "customer_id": customer_id,
             "simulation_id": simulation_id,
             "uuid": file_uuid,
+            "image_id": image_id,
             "save_image_path": save_image_path,
             "image_base64": result_base64,     # base64 인코딩된 PNG 데이터
             "image_media_type": "image/png"  # 미디어 타입
         }
 
+
     except Exception as e:
         traceback.print_exc()
+        # ── DB UPDATE (에러) ──────────────────
+        if image_id:
+            try:
+                db_update(image_id, image_statement=3)
+            except:
+                pass
         return {"error": str(e)}
 
 
