@@ -270,7 +270,6 @@ def handler(job):
         # ws.close()
         # print("[6] 완료!")
 
-        이미
         # 6. 결과 반환
         return {
             "status": "success",
