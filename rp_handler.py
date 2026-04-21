@@ -192,6 +192,19 @@ def wait_for_comfyui(timeout=120):
 
 
 
+def load_image_as_base64(image_path, timeout=30):
+    start = time.time()
+    while time.time() - start < timeout:
+        if os.path.exists(image_path) and os.path.getsize(image_path) > 0:
+            with open(image_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("utf-8")
+            print(f"[7] base64 변환 완료: {image_path}")
+            return encoded
+        time.sleep(0.5)
+    raise FileNotFoundError(f"출력 이미지가 생성되지 않았습니다: {image_path}")
+
+
+
 
 
 
@@ -262,6 +275,10 @@ def handler(job):
 
 
         
+        # ✅ base64 반환 완료!
+        image_base64 = load_image_as_base64(save_image_path)  # ← 추가
+        print("[7] base64 변환 완료")    
+                
         # # 5. 완료 대기
         # print("[5] 완료 대기 시작...")
         # if not wait_for_completion(prompt_id):
