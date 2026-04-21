@@ -5,13 +5,14 @@ import json
 import runpod
 import traceback
 import base64
+import uuid
 
 import websocket # comfyui  완료 감지
 import requests
 from requests.adapters import HTTPAdapter, Retry
 
-# 이건 왜 필요하지
-import urllib.request  # ComfyUI API 호출
+# ComfyUI API 호출
+import urllib.request  
 
 
 BASE_URI = 'http://127.0.0.1:3000'
@@ -33,40 +34,35 @@ print("start worker")
 
 # 이미지 넣을 폴더 생성
 
-def make_job_dirs_and_download(image_url, customer_id, simulation_id, uuid, image_index):
+def save_input_image(image_base64, customer_id, simulation_id, file_uuid):
     """
-    1. /tmp/input/{customer_id}/{simulation_id}/{uuid}/{image_index}/ 폴더 생성
-    2. image_url 다운로드 → {image_index}.png 로 저장 (확장자 무관하게 png로 통일)
-    3. output 폴더 생성
+    base64 이미지를 /tmp/input/{customer_id}/{simulation_id}에 저장
+    파일명 : {file_uuid}.png
     """
     # 입력 폴더 (로컬 tmp, 휘발성)
-    input_dir = f"/tmp/input/{customer_id}/{simulation_id}/{uuid}/{image_index}"
+    input_dir = f"/tmp/input/{customer_id}/{simulation_id}"
     os.makedirs(input_dir, exist_ok=True)
 
-    # 이미지 다운로드
-    response = requests.get(image_url, timeout=30) # image_url에 HTTP GET 요청, 30초 안에 응답없으면 에러
-    response.raise_for_status() # HTTP 상태코드 확인 200(정상), 404, 500 (에러)
-
-    # 파일명은 항상 {image_index}.png
-    filename = f"{image_index}.png"
-    filename_0001 = f"{image_index}_0001.png"
+    filename = f"{file_uuid}.png"
     input_image_path = os.path.join(input_dir, filename) # input_image 경로
 
+    # image를 base64로 받기
+    image_bytes = base64.b64decode(image_base64)
     with open(input_image_path, "wb") as f:
-        f.write(response.content)
+        f.write(image_bytes)
 
     # 출력 폴더 (Network Volume, 영구)
-    output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{uuid}"
+    output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{file_uuid}"
     os.makedirs(output_dir, exist_ok=True)
 
-    save_image_path = os.path.join(output_dir, filename_0001)
+    # 출력 파일 경로: ComfyUI가 {prefix}_0001.png 로 저장함
+    save_image_path = os.path.join(output_dir, f"{file_uuid}_0001.png")
 
     return input_dir, output_dir, input_image_path, save_image_path
 
 
-
 #  workflow 수정
-def get_workflow(input_dir, output_dir, image_index):
+def get_workflow(input_dir, output_dir, file_uuid):
     """
     qwen_model_1229_Fair_blending_websocket_0402_del_segment.json
     input_dir 및 output_dir 경로 현재 job 경로로 교체
@@ -80,15 +76,13 @@ def get_workflow(input_dir, output_dir, image_index):
         workflow = json.load(f)
 
     # 노드 23: 입력 경로 교체
-    # "D:\\Desktop\\..." → "/tmp/{folder}/input"
     workflow["23"]["inputs"]["path"] = input_dir
 
     # 노드 51: 출력 경로 교체
-    # "D:\\Desktop\\...\\result2" → "/runpod-volume/results/{folder}"
     workflow["51"]["inputs"]["output_path"] = output_dir
     
     # 파일명에 index 추가 (GPU 여러 개가 같은 폴더에 저장할 때 충돌 방지)
-    workflow["51"]["inputs"]["filename_prefix"] = f"{image_index}"
+    workflow["51"]["inputs"]["filename_prefix"] = file_uuid
 
     return workflow
 
@@ -175,8 +169,6 @@ def wait_for_completion(prompt_id, ws, timeout=600):
 
 
 
-
-
 def wait_for_comfyui(timeout=120):
     start = time.time()
     while time.time() - start < timeout:
@@ -216,48 +208,47 @@ def handler(job):
     job = {
         "id": "job_xxx",
         "input": {
-            "image_url": "https://...",
+            "image_base64": <base64문자열>,
             "customer_id": "cust_001",
-            "simulation_id": "sim_042",
-            "uuid": "20250416",  # 공통 폴더명용
-            "image_index": 0
+            "simulation_id": "sim_002"
         }
     }
     """
     job_input = job.get("input", {})
 
     # ── 입력값 파싱 ──────────────────
-    image_url     = job_input.get("image_url")
+    image_base64     = job_input.get("image_base64")
     customer_id   = job_input.get("customer_id")
     simulation_id = job_input.get("simulation_id")
-    uuid = job_input.get("uuid")
-    image_index   = job_input.get("image_index", 0)
 
-    # ⭐ image_url은 꼭 있어야 됨
-    if not image_url:
-        return {"error": "image_url 필요"}
 
-    if not all([customer_id, simulation_id, uuid]):
-        return {"error": "customer_id, simulation_id, uuid 필요"}
+    # ⭐ image_base64
+    if not image_base64:
+        return {"error": "image_base64 필요"}
+
+    if not all([customer_id, simulation_id]):
+        return {"error": "customer_id, simulation_id 필요"}
+
+    # ✅ uuid 자동 생성 (예: "a3f2c1d4")
+    file_uuid = uuid.uuid4().hex[:8]
+    print(f"[0] 생성된 uuid: {file_uuid}")
+
 
     try:
-        # 1. 디렉토리 생성
-        print("[1] 디렉토리 생성 및 이미지 다운로드 시작")
-        input_dir, output_dir, input_image_path, save_image_path = make_job_dirs_and_download(
-            image_url, customer_id, simulation_id, uuid, image_index
+        print("[1] 입력 이미지 저장 시작")
+        input_dir, output_dir, input_image_path, save_image_path = save_input_image(
+            image_base64, customer_id, simulation_id, file_uuid
         )
         print(f"[2] 다운로드 완료: {input_image_path}")
         
         # 3. workflow 경로 수정
-        workflow = get_workflow(input_dir, output_dir, image_index)
+        workflow = get_workflow(input_dir, output_dir, file_uuid)
         print("[3] workflow 로드 완료")
-
 
         # ✅ WebSocket 먼저 연결
         ws = websocket.WebSocket()
         ws.connect("ws://127.0.0.1:8188/ws?clientId=serverless_worker")
         print("[WS] WebSocket 연결 완료")
-
         
         # 연결 안정화 대기 (짧게)
         time.sleep(0.3)
@@ -267,8 +258,6 @@ def handler(job):
         prompt_id = result["prompt_id"]
         print(f"[4] ComfyUI 큐 전송 완료. prompt_id: {prompt_id}")
 
-
-        
         print("[5] 완료 대기 시작...")
         if not wait_for_completion(prompt_id, ws):  # ✅ ws 전달
             return {"error": "Timeout"}
@@ -278,31 +267,23 @@ def handler(job):
         time.sleep(1)
         
         # ✅ base64 반환 완료!
-        image_base64 = load_image_as_base64(save_image_path)  # ← 추가
+        result_base64 = load_image_as_base64(save_image_path)
         print("[7] base64 변환 완료")    
                 
-        # # 5. 완료 대기
-        # print("[5] 완료 대기 시작...")
-        # if not wait_for_completion(prompt_id):
-        #     return {"error": "Timeout"}
-
-        # ws.close()
-        # print("[6] 완료!")
 
         # 6. 결과 반환
         return {
             "status": "success",
             "customer_id": customer_id,
             "simulation_id": simulation_id,
-            "uuid": uuid,
-            "image_index": image_index,
-            "output_dir": output_dir,
+            "uuid": file_uuid,
             "save_image_path": save_image_path,
-            "image_base64": image_base64,     # base64 인코딩된 PNG 데이터
+            "image_base64": result_base64,     # base64 인코딩된 PNG 데이터
             "image_media_type": "image/png"  # 미디어 타입
         }
 
     except Exception as e:
+        traceback.print_exc()
         return {"error": str(e)}
 
 
@@ -314,40 +295,3 @@ if __name__ == "__main__":
     runpod.serverless.start({"handler": handler})
 
 
-
-
-# # 1. 백그라운드에서 ComfyUI 서버 실행
-# def start_comfyui():
-#     subprocess.Popen([
-#     "python3",
-#     "/workspace/runpod-slim/ComfyUI/main.py",
-#     "--listen", "0.1",
-#     "--port", "8188"
-# ])
-#     # 서버 ready 체크
-#     for _ in range(60):
-#         try:
-#             requests.get("http://0.1:8188")
-#             print("ComfyUI ready")
-#             return
-#         except:
-#             time.sleep(2)
-
-
-# # 완료 될때까지 대기 함수
-# def wait_for_completion(prompt_id):
-#     history_url = f"http://0.1:8188/history/{prompt_id}"
-
-#     while True:
-#         res = requests.get(history_url)
-#         if res.status_code != 200:
-#             time.sleep(1)
-#             continue
-
-#         res = res.json()
-
-#         if prompt_id in res:
-#             print("ComfyUI 작업 완료")
-#             return True
-
-#         time.sleep(1)
