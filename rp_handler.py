@@ -4,6 +4,7 @@ import requests
 import json
 import runpod
 import traceback
+import base64
 
 import websocket # comfyui  완료 감지
 import requests
@@ -273,7 +274,8 @@ def handler(job):
             return {"error": "Timeout"}
         print("[6] 완료!")
 
-
+        # ✅ ComfyUI 파일 저장 완료 대기 (완료 신호 후 실제 저장까지 약간의 딜레이 있음)
+        time.sleep(1)
         
         # ✅ base64 반환 완료!
         image_base64 = load_image_as_base64(save_image_path)  # ← 추가
