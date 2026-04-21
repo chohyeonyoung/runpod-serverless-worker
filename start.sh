@@ -46,7 +46,7 @@ PYTHON="$VENV_DIR/bin/python3"
 echo "Python: $PYTHON"
 echo "Python version: $($PYTHON --version)"
 
-"$PYTHON" -m pip install requests "runpod==1.6.2" websocket-client "yarl==1.9.4" -q
+"$PYTHON" -m pip install requests "runpod==1.6.2" websocket-client "yarl==1.9.4" pymysql -q
 
 # runpod, websocket 혹시 없으면 설치
 # pip install requests runpod websocket-client -q
