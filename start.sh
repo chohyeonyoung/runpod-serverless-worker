@@ -59,7 +59,7 @@ cd "$COMFYUI_DIR"
 # $PYTHON main.py --listen 0.0.0.0 --port 8188 > /workspace/logs/comfyui.log 2>&1 &
 
 # 변경
-$PYTHON main.py --listen 0.0.0.0 --port 8188 --normalvram > /workspace/logs/comfyui.log 2>&1 &
+$PYTHON main.py --listen 0.0.0.0 --port 8188 --highvram > /workspace/logs/comfyui.log 2>&1 &
 
 
 
