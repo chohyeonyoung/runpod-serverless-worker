@@ -312,7 +312,7 @@ def handler(job):
         t = time.time()
         conn = get_db_connection()  # 딱 1번만 연결
         image_id = db_insert(conn, customer_id, simulation_id)
-        print(f"[TIME] DB INSERT: {time.time()-t:.2f}초")
+        print(f" DB INSERT: {time.time()-t:.2f}초")
     except Exception as e:
         print(f"[DB] INSERT 실패, 계속 진행: {e}")
     
@@ -323,12 +323,12 @@ def handler(job):
         input_dir, output_dir, input_image_path, save_image_path = save_input_image(
             image_base64, customer_id, simulation_id, file_uuid
         )
-        print(f"[TIME] 이미지 저장: {time.time()-t:.2f}초")
+        print(f" 이미지 저장: {time.time()-t:.2f}초")
         
         # 3. workflow 경로 수정
         t = time.time()
         workflow = get_workflow(input_dir, output_dir, file_uuid)
-       print(f"[TIME] workflow 로드: {time.time()-t:.2f}초")
+        print(f"[TIME] workflow 로드: {time.time()-t:.2f}초")
 
         # ✅ WebSocket 먼저 연결
         t = time.time()
