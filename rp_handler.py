@@ -53,14 +53,13 @@ def get_db_connection():
     )
 
 
-def db_insert(customer_id, simulation_id):
+def db_insert(conn, customer_id, simulation_id):
     """
     job 시작 시 INSERT
     image_statement = 0 (진행중)
     image_url = NULL (아직 없음)
     create_at / update_at = DB DEFAULT (CURRENT_TIMESTAMP)
     """
-    conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -77,16 +76,13 @@ def db_insert(customer_id, simulation_id):
     except Exception as e:
         print(f"[DB] INSERT 실패: {e}")
         raise
-    finally:
-        conn.close()
 
 
-def db_update(image_id, image_statement, image_url=None):
+def db_update(conn, image_id, image_statement, image_url=None):
     """
     완료(2) 또는 에러(3) 시 UPDATE
     update_at은 DB의 ON UPDATE CURRENT_TIMESTAMP가 자동 처리
     """
-    conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -101,11 +97,6 @@ def db_update(image_id, image_statement, image_url=None):
     except Exception as e:
         print(f"[DB] UPDATE 실패: {e}")
         raise
-    finally:
-        conn.close()
-
-
-
 
 
 # ---------------------------------------------------------------------------- #
@@ -245,8 +236,6 @@ def wait_for_completion(prompt_id, ws, timeout=600):
 
 
 
-
-
 def wait_for_comfyui(timeout=120):
     start = time.time()
     while time.time() - start < timeout:
@@ -313,12 +302,16 @@ def handler(job):
 
 
     # ── DB INSERT (job 시작) ──────────────────
+    conn = None
     image_id = None
+
+    
     try:
-        image_id = db_insert(customer_id, simulation_id)
+        conn = get_db_connection()  # 딱 1번만 연결
+        image_id = db_insert(conn, customer_id, simulation_id)
     except Exception as e:
         print(f"[DB] INSERT 실패, 계속 진행: {e}")
-
+    
     
     try:
         print("[1] 입력 이미지 저장 시작")
@@ -357,8 +350,8 @@ def handler(job):
         print("[7] base64 변환 완료")    
 
         # ── DB UPDATE (완료) ──────────────────
-        if image_id:
-            db_update(image_id, image_statement=2, image_url=save_image_path)
+        if image_id and conn:
+            db_update(conn, image_id, image_statement=2, image_url=save_image_path)
                 
 
         # 6. 결과 반환
@@ -377,12 +370,16 @@ def handler(job):
     except Exception as e:
         traceback.print_exc()
         # ── DB UPDATE (에러) ──────────────────
-        if image_id:
+        if image_id and conn:
             try:
-                db_update(image_id, image_statement=3)
+                db_update(conn, image_id, image_statement=3)
             except:
                 pass
         return {"error": str(e)}
+        
+    finally:
+        if conn:
+            conn.close()
 
 
 # ── RunPod 시작점 ──────────────────────────
