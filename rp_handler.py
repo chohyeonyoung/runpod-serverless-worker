@@ -314,8 +314,11 @@ def handler(job):
 
     # ── DB INSERT (job 시작) ──────────────────
     image_id = None
+    t1 = time.time()
     try:
         image_id = db_insert(customer_id, simulation_id)
+    t2 = time.time()
+    print(f"[DB] INSERT 소요시간: {t2-t1:.2f}초")
     except Exception as e:
         print(f"[DB] INSERT 실패, 계속 진행: {e}")
 
@@ -358,8 +361,10 @@ def handler(job):
 
         # ── DB UPDATE (완료) ──────────────────
         if image_id:
+            t3 = time.time()
             db_update(image_id, image_statement=2, image_url=save_image_path)
-                
+            t4 = time.time()
+            print(f"[DB] UPDATE 소요시간: {t4-t3:.2f}초")
 
         # 6. 결과 반환
         return {
