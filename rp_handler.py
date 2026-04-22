@@ -352,7 +352,6 @@ def handler(job):
         result_base64 = load_image_as_base64(save_image_path)
         print("[7] base64 변환 완료")    
 
-        # ── DB UPDATE (완료) ──────────────────
         if image_id and conn:
             t3 = time.time()
             db_update(conn, image_id, image_statement=2, image_url=save_image_path)
@@ -374,7 +373,6 @@ def handler(job):
 
     except Exception as e:
         traceback.print_exc()
-        # ── DB UPDATE (에러) ──────────────────
         if image_id and conn:
             try:
                 db_update(conn, image_id, image_statement=3)
