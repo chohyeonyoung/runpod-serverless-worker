@@ -179,7 +179,7 @@ def wait_for_completion(prompt_id, ws, timeout=600):
     start_time = time.time()
     try:
         while time.time() - start_time < timeout:
-            ws.settimeout(5)
+            ws.settimeout(1)
             try:
                 msg = ws.recv()
             except websocket.WebSocketTimeoutException:
