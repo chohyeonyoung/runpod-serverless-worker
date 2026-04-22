@@ -298,6 +298,8 @@ def handler(job):
 
     # ✅ uuid 자동 생성 (예: "a3f2c1d4")
     file_uuid = uuid.uuid4().hex[:8]
+
+    job_start = time.time()  # 전체 시작
     print(f"[0] 생성된 uuid: {file_uuid}")
 
 
@@ -307,56 +309,62 @@ def handler(job):
 
     
     try:
+        t = time.time()
         conn = get_db_connection()  # 딱 1번만 연결
-        t1 = time.time()
         image_id = db_insert(conn, customer_id, simulation_id)
-        t2 = time.time()
-        print(f"[DB] INSERT 소요시간: {t2-t1:.2f}초")
+        print(f"[TIME] DB INSERT: {time.time()-t:.2f}초")
     except Exception as e:
         print(f"[DB] INSERT 실패, 계속 진행: {e}")
     
     
     try:
+        t = time.time()
         print("[1] 입력 이미지 저장 시작")
         input_dir, output_dir, input_image_path, save_image_path = save_input_image(
             image_base64, customer_id, simulation_id, file_uuid
         )
-        print(f"[2] 다운로드 완료: {input_image_path}")
+        print(f"[TIME] 이미지 저장: {time.time()-t:.2f}초")
         
         # 3. workflow 경로 수정
+        t = time.time()
         workflow = get_workflow(input_dir, output_dir, file_uuid)
-        print("[3] workflow 로드 완료")
+       print(f"[TIME] workflow 로드: {time.time()-t:.2f}초")
 
         # ✅ WebSocket 먼저 연결
+        t = time.time()
         ws = websocket.WebSocket()
         ws.connect("ws://127.0.0.1:8188/ws?clientId=serverless_worker")
-        print("[WS] WebSocket 연결 완료")
+        print(f"[TIME] WebSocket 연결: {time.time()-t:.2f}초")
         
         # 연결 안정화 대기 (짧게)
         time.sleep(0.3)
         
         # 4. ComfyUI 실행
+        t = time.time()
         result = queue_prompt(workflow)
         prompt_id = result["prompt_id"]
-        print(f"[4] ComfyUI 큐 전송 완료. prompt_id: {prompt_id}")
+        print(f"[TIME] ComfyUI 큐 전송: {time.time()-t:.2f}초")
 
-        print("[5] 완료 대기 시작...")
+        t = time.time()
         if not wait_for_completion(prompt_id, ws):  # ✅ ws 전달
             return {"error": "Timeout"}
-        print("[6] 완료!")
+        print(f"[TIME] ComfyUI 추론 완료: {time.time()-t:.2f}초")
 
         # ✅ ComfyUI 파일 저장 완료 대기 (완료 신호 후 실제 저장까지 약간의 딜레이 있음)
         time.sleep(1)
         
         # ✅ base64 반환 완료!
+        t = time.time()
         result_base64 = load_image_as_base64(save_image_path)
         print("[7] base64 변환 완료")    
+        print(f"[TIME] base64 변환: {time.time()-t:.2f}초")
 
         if image_id and conn:
-            t3 = time.time()
+            t = time.time()
             db_update(conn, image_id, image_statement=2, image_url=save_image_path)
-            t4 = time.time()
-            print(f"[DB] UPDATE 소요시간: {t4-t3:.2f}초")
+            print(f"[TIME] DB UPDATE: {time.time()-t:.2f}초")
+
+        print(f"[TIME] 전체 소요시간: {time.time()-job_start:.2f}초")
 
         # 6. 결과 반환
         return {
