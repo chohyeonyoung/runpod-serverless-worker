@@ -60,8 +60,7 @@ cd "$COMFYUI_DIR"
 
 # 변경
 $PYTHON main.py --listen 0.0.0.0 --port 8188 --normalvram > /workspace/logs/comfyui.log 2>&1 &
-
-
+"$PYTHON" -c "import boto3; print(boto3.__version__)"
 
 
 
