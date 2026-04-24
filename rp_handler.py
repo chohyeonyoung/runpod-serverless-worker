@@ -6,6 +6,7 @@ import runpod
 import traceback
 import base64
 import uuid
+import boto3
 
 import websocket # comfyui  완료 감지
 import requests
@@ -23,6 +24,23 @@ RUNPOD_VOLUME_PATH = '/runpod-volume'
 VOLUME_MOUNT_PATH  = os.environ.get("RUNPOD_VOLUME_PATH", "/runpod-volume")
 NETWORK_VOLUME = '/workspace'
 TIMEOUT = 600
+
+
+
+
+
+# ------------------------------R2 연결 정보----------------------------------- #
+r2 = boto3.client('s3',
+    endpoint_url=os.environ['R2_ENDPOINT'],
+    aws_access_key_id=os.environ['R2_ACCESS_KEY'],
+    aws_secret_access_key=os.environ['R2_SECRET_KEY'],
+    region_name='auto'
+)
+# ----------------------------------------------------------------------------- #
+
+
+
+
 # ------------------------------DB 연결 정보----------------------------------- #
 DB_HOST     = os.environ.get("DB_HOST")
 DB_PORT     = int(os.environ.get("DB_PORT", 3306))
@@ -121,13 +139,16 @@ def save_input_image(image_base64, customer_id, simulation_id, file_uuid):
         f.write(image_bytes)
 
     # 출력 폴더 (Network Volume, 영구)
-    output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{file_uuid}"
+    # output_dir = f"{VOLUME_MOUNT_PATH}/runpod-slim/ComfyUI/output/{customer_id}/{simulation_id}/{file_uuid}"
+    # 출력 폴더 (tmp, 휘발성 : r2저장소에만 저장해도 될때 이렇게 바꾸기)
+    output_dir = f"/tmp/output/{customer_id}/{simulation_id}/{file_uuid}"
     os.makedirs(output_dir, exist_ok=True)
 
     # 출력 파일 경로: ComfyUI가 {prefix}_0001.png 로 저장함
-    save_image_path = os.path.join(output_dir, f"{file_uuid}_0001.png")
+    # save_image_path = os.path.join(output_dir, f"{file_uuid}_0001.png")
 
-    return input_dir, output_dir, input_image_path, save_image_path
+    # return input_dir, output_dir, input_image_path, save_image_path
+    return input_dir, output_dir, input_image_path
 
 
 #  workflow 수정
@@ -151,10 +172,9 @@ def get_workflow(input_dir, output_dir, file_uuid):
     workflow["51"]["inputs"]["output_path"] = output_dir
     
     # 파일명에 index 추가 (GPU 여러 개가 같은 폴더에 저장할 때 충돌 방지)
-    workflow["51"]["inputs"]["filename_prefix"] = file_uuid
+    # workflow["51"]["inputs"]["filename_prefix"] = file_uuid
 
     return workflow
-
 
 
 
@@ -252,18 +272,53 @@ def wait_for_comfyui(timeout=120):
 
 
 
-def load_image_as_base64(save_image_path, timeout=30):
+# def load_image_as_base64(save_image_path, timeout=30):
+#     start = time.time()
+#     while time.time() - start < timeout:
+#         if os.path.exists(save_image_path) and os.path.getsize(save_image_path) > 0:
+#             with open(save_image_path, "rb") as f:
+#                 encoded = base64.b64encode(f.read()).decode("utf-8")
+#             print(f"[7] base64 변환 완료: {save_image_path}")
+#             return encoded
+#         time.sleep(0.5)
+#     raise FileNotFoundError(f"출력 이미지가 생성되지 않았습니다: {save_image_path}")
+
+
+
+
+# ---------------------------------------------------------------------------- #
+#                               R2 Functions                                   #
+# ---------------------------------------------------------------------------- #
+
+def find_output_image(output_dir, timeout=30):
+    """output_dir에서 생성된 png 파일 찾기"""
     start = time.time()
     while time.time() - start < timeout:
-        if os.path.exists(save_image_path) and os.path.getsize(save_image_path) > 0:
-            with open(save_image_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
-            print(f"[7] base64 변환 완료: {save_image_path}")
-            return encoded
+        files = [f for f in os.listdir(output_dir) if f.endswith(".png")]
+        if files:
+            image_path = os.path.join(output_dir, files[0])
+            if os.path.getsize(image_path) > 0:
+                print(f"[이미지] 확인 완료: {image_path}")
+                return image_path
         time.sleep(0.5)
-    raise FileNotFoundError(f"출력 이미지가 생성되지 않았습니다: {save_image_path}")
+    raise FileNotFoundError(f"출력 이미지가 생성되지 않았습니다: {output_dir}")
 
 
+
+def upload_to_r2(local_path, customer_id, simulation_id, file_uuid):
+    """이미지를 R2에 업로드 → URL 반환 → 로컬 파일 삭제"""
+    filename = os.path.basename(local_path)
+    r2_key = f"comfyui/output/{customer_id}/{simulation_id}/{file_uuid}/{filename}"
+
+    r2.upload_file(local_path, os.environ['R2_BUCKET'], r2_key)
+    print(f"[R2] 업로드 완료: {r2_key}")
+
+    # 로컬 임시 파일 삭제
+    os.remove(local_path)
+    print(f"[로컬] 임시 파일 삭제: {local_path}")
+
+    r2_url = f"{os.environ['R2_PUBLIC_URL']}/{r2_key}"
+    return r2_url
 
 
 
@@ -292,13 +347,12 @@ def handler(job):
     # ⭐ image_base64
     if not image_base64:
         return {"error": "image_base64 필요"}
-
     if not all([customer_id, simulation_id]):
         return {"error": "customer_id, simulation_id 필요"}
 
+    
     # ✅ uuid 자동 생성 (예: "a3f2c1d4")
     file_uuid = uuid.uuid4().hex[:8]
-
     job_start = time.time()  # 전체 시작
     print(f"[0] 생성된 uuid: {file_uuid}")
 
@@ -320,7 +374,7 @@ def handler(job):
     try:
         t = time.time()
         print("[1] 입력 이미지 저장 시작")
-        input_dir, output_dir, input_image_path, save_image_path = save_input_image(
+        input_dir, output_dir, input_image_path = save_input_image(
             image_base64, customer_id, simulation_id, file_uuid
         )
         print(f" 이미지 저장: {time.time()-t:.2f}초")
@@ -335,7 +389,6 @@ def handler(job):
         ws = websocket.WebSocket()
         ws.connect("ws://127.0.0.1:8188/ws?clientId=serverless_worker")
         print(f"[TIME] WebSocket 연결: {time.time()-t:.2f}초")
-        
         # 연결 안정화 대기 (짧게)
         time.sleep(0.3)
         
@@ -345,26 +398,49 @@ def handler(job):
         prompt_id = result["prompt_id"]
         print(f"[TIME] ComfyUI 큐 전송: {time.time()-t:.2f}초")
 
+        # 완료 대기
         t = time.time()
         if not wait_for_completion(prompt_id, ws):  # ✅ ws 전달
             return {"error": "Timeout"}
         print(f"[TIME] ComfyUI 추론 완료: {time.time()-t:.2f}초")
-
         # ✅ ComfyUI 파일 저장 완료 대기 (완료 신호 후 실제 저장까지 약간의 딜레이 있음)
         time.sleep(1)
         
-        # ✅ base64 반환 완료!
-        t = time.time()
-        result_base64 = load_image_as_base64(save_image_path)
-        print("[7] base64 변환 완료")    
-        print(f"[TIME] base64 변환: {time.time()-t:.2f}초")
 
+        # 이미지 찾기
+        t = time.time()
+        actual_image_path = find_output_image(output_dir)
+        print(f"[TIME] 이미지 탐색: {time.time()-t:.2f}초")
+
+
+        # 7. R2 업로드 → 로컬 삭제
+        t = time.time()
+        r2_url = upload_to_r2(actual_image_path, customer_id, simulation_id, file_uuid)
+        print(f"[TIME] R2 업로드: {time.time()-t:.2f}초")
+
+        # 8. DB 업데이트
         if image_id and conn:
             t = time.time()
-            db_update(conn, image_id, image_statement=2, image_url=save_image_path)
+            db_update(conn, image_id, image_statement=2, image_url=r2_url)
             print(f"[TIME] DB UPDATE: {time.time()-t:.2f}초")
 
         print(f"[TIME] 전체 소요시간: {time.time()-job_start:.2f}초")
+        
+        
+        
+        # # ✅ base64 반환 완료!
+        # t = time.time()
+        # result_base64 = load_image_as_base64(save_image_path)
+        # print("[7] base64 변환 완료")    
+        # print(f"[TIME] base64 변환: {time.time()-t:.2f}초")
+
+        # if image_id and conn:
+        #     t = time.time()
+        #     db_update(conn, image_id, image_statement=2, image_url=save_image_path)
+        #     print(f"[TIME] DB UPDATE: {time.time()-t:.2f}초")
+
+        # print(f"[TIME] 전체 소요시간: {time.time()-job_start:.2f}초")
+        
 
         # 6. 결과 반환
         return {
@@ -373,9 +449,7 @@ def handler(job):
             "simulation_id": simulation_id,
             "uuid": file_uuid,
             "image_id": image_id,
-            "save_image_path": save_image_path,
-            "image_base64": result_base64,     # base64 인코딩된 PNG 데이터
-            "image_media_type": "image/png"  # 미디어 타입
+            "r2_url": r2_url
         }
 
 
