@@ -38,6 +38,19 @@ r2 = boto3.client('s3',
 )
 # ----------------------------------------------------------------------------- #
 
+# 버킷 목록 조회 테스트
+try:
+    response = r2.list_buckets()
+    print("연결 성공:", response['Buckets'])
+except Exception as e:
+    print("연결 실패:", e)
+
+# 실제 업로드 테스트
+try:
+    r2.put_object(Bucket='runpod-comfyui', Key='test.txt', Body=b'hello')
+    print("업로드 성공!")
+except Exception as e:
+    print("업로드 실패:", e)
 
 
 
