@@ -57,7 +57,8 @@ print("start worker")
 
 print(f"[ENV] ENDPOINT: {os.environ.get('R2_ENDPOINT')}")
 print(f"[ENV] BUCKET: {os.environ.get('R2_BUCKET')}")
-print(f"[ENV] ACCESS_KEY: {os.environ.get('R2_ACCESS_KEY', '')[:8]}...")  # 앞 8자리만
+print(f"[ENV] ACCESS_KEY: {os.environ.get('R2_ACCESS_KEY', '')[:8]}... (총 {len(os.environ.get('R2_ACCESS_KEY', ''))}자)")
+print(f"[ENV] SECRET_KEY: {os.environ.get('R2_SECRET_KEY', '')[:8]}... (총 {len(os.environ.get('R2_SECRET_KEY', ''))}자)")
 
 
 
