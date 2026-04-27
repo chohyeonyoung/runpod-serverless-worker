@@ -55,6 +55,12 @@ print("start worker")
 
 
 
+print(f"[ENV] ENDPOINT: {os.environ.get('R2_ENDPOINT')}")
+print(f"[ENV] BUCKET: {os.environ.get('R2_BUCKET')}")
+print(f"[ENV] ACCESS_KEY: {os.environ.get('R2_ACCESS_KEY', '')[:8]}...")  # 앞 8자리만
+
+
+
 # ---------------------------------------------------------------------------- #
 #                               DB Functions                                   #
 # ---------------------------------------------------------------------------- #
